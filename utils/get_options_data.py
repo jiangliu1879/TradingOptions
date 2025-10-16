@@ -2,7 +2,14 @@ from datetime import date, datetime
 from longport.openapi import QuoteContext, Config
 import pandas as pd
 import os
+import sys
 from longport.openapi import QuoteContext, Config, Period, AdjustType
+from collections import defaultdict
+
+# 添加项目根目录到路径
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.max_pain_calculator import MaxPainCalculator
+from models.stock_max_pain_result import StockMaxPainResult
 
 
 config = Config.from_env()
@@ -77,6 +84,78 @@ def get_option_data(stock_code: str, expiry_date: date, option_type: str, list_s
     return list_data
 
 
+def calculate_and_save_max_pain(stock_code: str, expiry_date: date, call_option_data: list, put_option_data: list, stock_close_price: float):
+    """
+    计算最大痛点并保存到数据库
+    
+    Args:
+        stock_code: 股票代码
+        expiry_date: 到期日期
+        call_option_data: call期权数据列表
+        put_option_data: put期权数据列表
+        stock_close_price: 股票收盘价
+    """
+    try:
+        # 合并call和put期权数据
+        all_option_data = call_option_data + put_option_data
+        
+        # 按行权价分组期权数据
+        grouped_data = defaultdict(lambda: {"volume": {"put": 0, "call": 0}, "open_interest": {"put": 0, "call": 0}})
+        
+        for option in all_option_data:
+            strike_price = option['strike_price']
+            option_type = option['type']
+            volume = option['volume']
+            open_interest = option['open_interest']
+            
+            grouped_data[strike_price]["volume"][option_type] = volume
+            grouped_data[strike_price]["open_interest"][option_type] = open_interest
+        
+        # 转换为MaxPainCalculator需要的格式
+        data_list = []
+        for strike_price in sorted(grouped_data.keys()):
+            data_list.append({strike_price: grouped_data[strike_price]})
+        
+        if not data_list:
+            print(f"⚠️ 没有期权数据可用于计算最大痛点")
+            return
+        
+        # 使用MaxPainCalculator计算最大痛点
+        max_pain_result = MaxPainCalculator.calculate_max_pain_from_options_data(data_list, include_volume_std=True)
+        
+        # 准备数据库数据
+        db_data = {
+            'stock_code': stock_code,
+            'expiry_date': expiry_date,
+            'stock_close_price': stock_close_price,
+            'max_pain_price_volume': max_pain_result['max_pain_price_volume'],
+            'max_pain_price_open_interest': max_pain_result['max_pain_price_open_interest'],
+            'sum_volume': max_pain_result['sum_volume'],
+            'volume_std_deviation': max_pain_result['volume_std_deviation'],
+            'sum_open_interest': max_pain_result['sum_open_interest']
+        }
+        
+        # 确保数据库表存在
+        StockMaxPainResult.create_tables()
+        
+        # 保存到数据库
+        saved_count = StockMaxPainResult.save_stock_max_pain_results([db_data])
+        
+        print(f"✅ {stock_code} - {expiry_date} 最大痛点计算完成:")
+        print(f"   基于Volume: ${max_pain_result['max_pain_price_volume']:.0f}")
+        print(f"   基于Open Interest: ${max_pain_result['max_pain_price_open_interest']:.0f}")
+        print(f"   股票收盘价: ${stock_close_price:.2f}")
+        print(f"   总成交量: {max_pain_result['sum_volume']:,}")
+        print(f"   总持仓量: {max_pain_result['sum_open_interest']:,}")
+        print(f"   Volume标准差: {max_pain_result['volume_std_deviation']:.2f}")
+        print(f"   保存状态: {'成功' if saved_count > 0 else '已存在'}")
+        
+    except Exception as e:
+        print(f"❌ 计算最大痛点失败: {e}")
+        import traceback
+        traceback.print_exc()
+
+
 def process_options_data(stock_code, expiry_date, update_time, file_name):
     """处理期权数据并保存到CSV"""
     try:
@@ -97,8 +176,10 @@ def process_options_data(stock_code, expiry_date, update_time, file_name):
 
         call_option_data = get_option_data(stock_code, expiry_date, 'call', call_symbols, update_time)
         import time
-        time.sleep(60)
         put_option_data = get_option_data(stock_code, expiry_date, 'put', put_symbols, update_time)
+
+        # 获取股票收盘价（用于max pain计算）
+        stock_close_price = get_stock_close_price(stock_code, update_time, update_time)
 
         filename = f"data/options/{file_name}.csv"
 
@@ -117,7 +198,11 @@ def process_options_data(stock_code, expiry_date, update_time, file_name):
             if not file_exists:
                 writer.writeheader() 
             # 4. 写入所有行数据
-            writer.writerows(call_option_data + put_option_data) 
+            writer.writerows(call_option_data + put_option_data)
+
+        # 计算并保存最大痛点到数据库
+        print(f"\n🧮 开始计算 {stock_code} - {expiry_date} 的最大痛点...")
+        calculate_and_save_max_pain(stock_code, expiry_date, call_option_data, put_option_data, stock_close_price) 
 
     except Exception as e:
         print(f"Error processing options data: {e}")

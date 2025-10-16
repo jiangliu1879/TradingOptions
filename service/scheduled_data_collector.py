@@ -19,6 +19,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from service.get_realtime_options_data import process_options_data, get_eastern_time
 from models.options_data import OptionsData
 from models.max_pain_result import MaxPainResult
+from utils.max_pain_calculator import MaxPainCalculator
 import pandas as pd
 from collections import defaultdict
 import statistics
@@ -240,68 +241,17 @@ class ScheduledDataCollector:
                 self.logger.warning(f"⚠️ 没有期权数据可用于计算最大痛点")
                 return None
             
-            min_earn_volume = float('inf')
-            min_earn_open_interest = float('inf')
-            max_pain_price_volume = 0
-            max_pain_price_open_interest = 0
-            volume_std_deviation = 0
-            max_pain_index = 0
-            sum_volume = 0
-            sum_open_interest = 0
+            # 使用新的MaxPainCalculator工具类
+            result = MaxPainCalculator.calculate_max_pain_with_metadata(
+                stock_code=stock_code,
+                expiry_date=expiry_date,
+                update_time=update_time,
+                data_list=data_list,
+                include_volume_std=True
+            )
             
-            # 遍历每个行权价，计算在该价格到期时的期权卖方收益
-            for i in range(len(data_list)):
-                put_earn_volume = 0
-                put_earn_open_interest = 0
-                call_earn_volume = 0
-                call_earn_open_interest = 0
-                
-                # 计算高于当前行权价的put期权收益
-                for data_item in data_list[i + 1:]:
-                    strike_price = list(data_item.keys())[0]
-                    put_earn_volume += data_item[strike_price]['volume']['put']
-                    put_earn_open_interest += data_item[strike_price]['open_interest']['put']
-                    sum_volume += data_item[strike_price]['volume']['put']
-                    sum_open_interest += data_item[strike_price]['open_interest']['put']
-                
-                # 计算低于当前行权价的call期权收益
-                for data_item in data_list[:i]:
-                    strike_price = list(data_item.keys())[0]
-                    call_earn_volume += data_item[strike_price]['volume']['call']
-                    call_earn_open_interest += data_item[strike_price]['open_interest']['call']
-                    sum_volume += data_item[strike_price]['volume']['call']
-                    sum_open_interest += data_item[strike_price]['open_interest']['call']
-
-                current_strike_price = list(data_list[i].keys())[0]
-                total_earn_volume = put_earn_volume + call_earn_volume
-                total_earn_open_interest = put_earn_open_interest + call_earn_open_interest
-                
-                # 更新基于volume的最大痛点
-                if total_earn_volume < min_earn_volume:
-                    min_earn_volume = total_earn_volume
-                    max_pain_price_volume = current_strike_price
-                    max_pain_index = i
-                
-                # 更新基于open_interest的最大痛点
-                if total_earn_open_interest < min_earn_open_interest:
-                    min_earn_open_interest = total_earn_open_interest
-                    max_pain_price_open_interest = current_strike_price
-
-            # 计算最大痛点价格及其左右3档行权价的volume标准差
-            volume_std_deviation = self.calculate_volume_std_deviation(data_list, max_pain_index)
-
-            result = {
-                'stock_code': stock_code,
-                'expiry_date': expiry_date,
-                'update_time': update_time,
-                'max_pain_price_volume': max_pain_price_volume,
-                'max_pain_price_open_interest': max_pain_price_open_interest,
-                'sum_volume': sum_volume,
-                'volume_std_deviation': volume_std_deviation,
-                'sum_open_interest': sum_open_interest
-            }
-            
-            self.logger.info(f"✅ 最大痛点计算完成 - Volume: ${max_pain_price_volume:.0f}, Open Interest: ${max_pain_price_open_interest:.0f}")
+            if result:
+                self.logger.info(f"✅ 最大痛点计算完成 - Volume: ${result['max_pain_price_volume']:.0f}, Open Interest: ${result['max_pain_price_open_interest']:.0f}")
             
             return result
             
