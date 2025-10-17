@@ -17,6 +17,47 @@ import numpy as np
 # 添加项目根目录到路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from models.max_pain_result import MaxPainResult
+from models.stock_max_pain_result import StockMaxPainResult
+
+
+def calculate_volume_level():
+    """
+    计算成交量水位
+    水位计算逻辑：从stock_max_pain_results表中读取全部sum_volume值并计算均值，
+    用max_pain_results中最新的sum_volume除以前面计算的均值
+    """
+    try:
+        # 从stock_max_pain_results表获取所有sum_volume值并计算均值
+        stock_results = StockMaxPainResult.get_all_results()
+        if not stock_results:
+            return None, None, None
+        
+        stock_volumes = [result['sum_volume'] for result in stock_results if result['sum_volume'] > 0]
+        if not stock_volumes:
+            return None, None, None
+        
+        avg_volume = sum(stock_volumes) / len(stock_volumes)
+        
+        # 从max_pain_results表获取最新的sum_volume
+        max_pain_results = MaxPainResult.get_max_pain_results()
+        if not max_pain_results:
+            return None, None, None
+        
+        # 按更新时间排序，获取最新的记录
+        latest_result = max(max_pain_results, key=lambda x: x.update_time)
+        latest_volume = latest_result.sum_volume
+        
+        # 计算水位（最新的成交量除以平均成交量）
+        if avg_volume > 0:
+            volume_level = latest_volume / avg_volume
+        else:
+            volume_level = 0
+        
+        return volume_level, latest_volume, avg_volume
+        
+    except Exception as e:
+        st.error(f"❌ 计算成交量水位失败: {e}")
+        return None, None, None
 
 
 def load_max_pain_data():
@@ -485,9 +526,9 @@ def main():
         help="选择一个股票代码进行查看"
     )
     
-    # 根据选择的股票代码筛选可用的到期日期
+    # 根据选择的股票代码筛选可用的到期日期，并按时间倒序排列（最近的在前面）
     if selected_stock:
-        available_dates_for_stock = df[df['stock_code'] == selected_stock]['expiry_date'].unique()
+        available_dates_for_stock = sorted(df[df['stock_code'] == selected_stock]['expiry_date'].unique(), reverse=True)
     else:
         available_dates_for_stock = []
     
@@ -554,8 +595,35 @@ def main():
         st.warning(f"⚠️ 没有找到 {selected_stock} 在 {selected_date.strftime('%Y-%m-%d')} 的数据")
         st.stop()
     
-    # 显示当前选择的股票和到期日期
-    st.info(f"📊 当前查看: **{selected_stock}** - **{selected_date.strftime('%Y-%m-%d')}**")
+    # 计算并显示成交量水位
+    volume_level, latest_volume, avg_volume = calculate_volume_level()
+    
+    # 显示当前选择的股票和到期日期以及成交量水位
+    if volume_level is not None:
+        # 根据水位值设置颜色和图标
+        if volume_level >= 1.5:
+            level_emoji = "🔥"
+            level_color = "red"
+            level_text = "高水位"
+        elif volume_level >= 1.2:
+            level_emoji = "⚡"
+            level_color = "orange"
+            level_text = "中高水位"
+        elif volume_level >= 0.8:
+            level_emoji = "📊"
+            level_color = "blue"
+            level_text = "正常水位"
+        else:
+            level_emoji = "📉"
+            level_color = "green"
+            level_text = "低水位"
+        
+        st.info(
+            f"{level_emoji} **成交量水位: {level_text}** ({volume_level:.2f}x)  |  "
+            f"最新成交量: {latest_volume:,.0f}  |  平均成交量: {avg_volume:,.0f}"
+        )
+    else:
+        st.info(f"📊 当前查看: **{selected_stock}** - **{selected_date.strftime('%Y-%m-%d')}**")
     
     # 图表显示选项
     chart_type = st.selectbox(

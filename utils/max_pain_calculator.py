@@ -44,10 +44,7 @@ class MaxPainCalculator:
                 'max_pain_price_open_interest': float,
                 'sum_volume': int,
                 'sum_open_interest': int,
-                'volume_std_deviation': float (if include_volume_std=True),
-                'max_pain_index': int,
-                'min_earn_volume': float,
-                'min_earn_open_interest': float
+                'volume_std_deviation': float (if include_volume_std=True)
             }
         """
         if not data_list:
@@ -56,10 +53,7 @@ class MaxPainCalculator:
                 'max_pain_price_open_interest': 0,
                 'sum_volume': 0,
                 'sum_open_interest': 0,
-                'volume_std_deviation': 0.0,
-                'max_pain_index': 0,
-                'min_earn_volume': float('inf'),
-                'min_earn_open_interest': float('inf')
+                'volume_std_deviation': 0.0
             }
         
         min_earn_volume = float('inf')
@@ -120,10 +114,7 @@ class MaxPainCalculator:
             'max_pain_price_open_interest': max_pain_price_open_interest,
             'sum_volume': sum_volume,
             'sum_open_interest': sum_open_interest,
-            'volume_std_deviation': volume_std_deviation,
-            'max_pain_index': max_pain_index,
-            'min_earn_volume': min_earn_volume,
-            'min_earn_open_interest': min_earn_open_interest
+            'volume_std_deviation': volume_std_deviation
         }
     
     @staticmethod
@@ -212,9 +203,7 @@ class MaxPainCalculator:
         return (
             f"Max Pain Results:\n"
             f"  Volume-based: ${result['max_pain_price_volume']:.0f} "
-            f"(min earn: {result['min_earn_volume']:,.0f})\n"
             f"  Open Interest-based: ${result['max_pain_price_open_interest']:.0f} "
-            f"(min earn: {result['min_earn_open_interest']:,.0f})\n"
             f"  Total Volume: {result['sum_volume']:,}\n"
             f"  Total Open Interest: {result['sum_open_interest']:,}\n"
             f"  Volume Std Dev: {result['volume_std_deviation']:.2f}"
