@@ -54,6 +54,18 @@ def get_options_chain(stock_code, expiry_date):
         print(f"Error getting options data: {e}")
         return None
 
+def get_stock_realtime_price(stock_code):
+    """获取股票实时行情"""
+    try: 
+        resp = ctx.quote([stock_code])
+        for item in resp:
+            if item.symbol == stock_code:
+                return item.last_done
+        return None
+    except Exception as e:
+        print(f"Error getting stock realtime price: {e}")
+        return None
+
 def get_option_data(stock_code: str, expiry_date: date, option_type: str, list_symbol: list, update_time: str):
     list_strike_price = []
     list_volume = []
@@ -119,8 +131,11 @@ def process_options_data(stock_code, expiry_date, update_time):
 
 if __name__ == "__main__":
     # 获取并显示美东当前时间
-    eastern_time = get_eastern_time()
-    update_time = eastern_time.strftime('%Y-%m-%d %H:%M:%S')
+    # eastern_time = get_eastern_time()
+    # update_time = eastern_time.strftime('%Y-%m-%d %H:%M:%S')
     
-    process_options_data("SPY.US", date(2025, 10, 14), update_time)
+    # process_options_data("SPY.US", date(2025, 10, 14), update_time)
+
+    stock_price = get_stock_realtime_price("SPY.US")
+    print(stock_price)
 

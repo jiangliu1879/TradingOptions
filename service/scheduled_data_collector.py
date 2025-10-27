@@ -16,7 +16,7 @@ from typing import Optional
 
 # 添加项目根目录到路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from service.get_realtime_options_data import process_options_data, get_eastern_time
+from service.get_realtime_options_data import process_options_data, get_eastern_time, get_stock_realtime_price
 from models.options_data import OptionsData
 from models.max_pain_result import MaxPainResult
 from utils.max_pain_calculator import MaxPainCalculator
@@ -84,6 +84,8 @@ class ScheduledDataCollector:
             update_time = eastern_time.strftime('%Y-%m-%d %H:%M:%S')
             
             self.logger.info(f"数据收集时间: {update_time}")
+
+            stock_price = get_stock_realtime_price(self.stock_code)
             
             # 处理期权数据
             result = process_options_data(self.stock_code, self.expiry_date, update_time)
@@ -102,6 +104,7 @@ class ScheduledDataCollector:
                 )
                 
                 if max_pain_result:
+                    max_pain_result['stock_price'] = stock_price
                     self.save_max_pain_result(max_pain_result)
                     self.logger.info(f"✅ 最大痛点计算和保存完成")
                 else:

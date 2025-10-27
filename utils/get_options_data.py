@@ -215,5 +215,5 @@ if __name__ == "__main__":
 
     list_stock_code = ["SPY.US"]
     for stock_code in list_stock_code:
-        process_options_data(stock_code, date(2025, 10, 16), date(2025, 10, 16), "spy_options_data")
+        process_options_data(stock_code, date(2025, 10, 24), date(2025, 10, 24), "spy_options_data")
 

@@ -50,6 +50,9 @@ class MaxPainResult(Base):
     # Total open interest sum
     sum_open_interest = Column(Integer, nullable=False)
     
+    # Stock price at the time of calculation
+    stock_price = Column(Float, nullable=False, default=0)
+    
     def __repr__(self):
         """String representation of the model"""
         return f"<MaxPainResult(stock_code='{self.stock_code}', expiry_date='{self.expiry_date}', max_pain_volume={self.max_pain_price_volume})>"
@@ -65,7 +68,8 @@ class MaxPainResult(Base):
             'max_pain_price_open_interest': self.max_pain_price_open_interest,
             'sum_volume': self.sum_volume,
             'volume_std_deviation': self.volume_std_deviation,
-            'sum_open_interest': self.sum_open_interest
+            'sum_open_interest': self.sum_open_interest,
+            'stock_price': self.stock_price
         }
     
     @classmethod
@@ -247,6 +251,19 @@ class MaxPainResult(Base):
             
             result = query.order_by(cls.expiry_date).all()
             return [row[0] for row in result]
+        finally:
+            session.close()
+    
+    @classmethod
+    def get_all_results(cls):
+        """Get all max pain results from database"""
+        session = cls.get_session()
+        try:
+            results = session.query(cls).all()
+            return [result.to_dict() for result in results]
+        except Exception as e:
+            print(f"❌ 查询数据失败: {e}")
+            return []
         finally:
             session.close()
 

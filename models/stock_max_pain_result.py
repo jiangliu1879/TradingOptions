@@ -52,9 +52,6 @@ class StockMaxPainResult(Base):
     # Total open interest sum
     sum_open_interest = Column(Integer, nullable=False)
     
-    # Calculation timestamp
-    calculated_at = Column(DateTime, default=datetime.now, nullable=False)
-    
     def __repr__(self):
         """String representation of the model"""
         return f"<StockMaxPainResult(stock_code='{self.stock_code}', expiry_date='{self.expiry_date}', max_pain_volume={self.max_pain_price_volume})>"
@@ -70,8 +67,7 @@ class StockMaxPainResult(Base):
             'max_pain_price_open_interest': self.max_pain_price_open_interest,
             'sum_volume': self.sum_volume,
             'volume_std_deviation': self.volume_std_deviation,
-            'sum_open_interest': self.sum_open_interest,
-            'calculated_at': self.calculated_at
+            'sum_open_interest': self.sum_open_interest
         }
     
     @classmethod
@@ -134,7 +130,6 @@ class StockMaxPainResult(Base):
                     existing_record.sum_volume = result_data['sum_volume']
                     existing_record.volume_std_deviation = result_data['volume_std_deviation']
                     existing_record.sum_open_interest = result_data['sum_open_interest']
-                    existing_record.calculated_at = datetime.now()
                     print(f"📝 更新记录: {result_data['stock_code']} - {result_data['expiry_date']}")
                 else:
                     # Create new record

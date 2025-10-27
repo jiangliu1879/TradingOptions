@@ -39,13 +39,13 @@ def calculate_volume_level():
         avg_volume = sum(stock_volumes) / len(stock_volumes)
         
         # 从max_pain_results表获取最新的sum_volume
-        max_pain_results = MaxPainResult.get_max_pain_results()
+        max_pain_results = MaxPainResult.get_all_results()
         if not max_pain_results:
             return None, None, None
         
         # 按更新时间排序，获取最新的记录
-        latest_result = max(max_pain_results, key=lambda x: x.update_time)
-        latest_volume = latest_result.sum_volume
+        latest_result = max(max_pain_results, key=lambda x: x['update_time'])
+        latest_volume = latest_result['sum_volume']
         
         # 计算水位（最新的成交量除以平均成交量）
         if avg_volume > 0:
@@ -81,7 +81,8 @@ def load_max_pain_data():
                 'max_pain_price_open_interest': result.max_pain_price_open_interest,
                 'sum_volume': result.sum_volume,
                 'volume_std_deviation': result.volume_std_deviation,
-                'sum_open_interest': result.sum_open_interest
+                'sum_open_interest': result.sum_open_interest,
+                'stock_price': result.stock_price
             })
         
         df = pd.DataFrame(data_list)
@@ -111,8 +112,8 @@ def create_time_series_chart(df_filtered):
     
     # 创建子图
     fig = make_subplots(
-        rows=2, cols=1,
-        subplot_titles=('最大痛点价格 - Volume', '最大痛点价格 - Open Interest'),
+        rows=3, cols=1,
+        subplot_titles=('最大痛点价格 - Volume', '最大痛点价格 - Open Interest', '股票价格'),
         vertical_spacing=0.1,
         shared_xaxes=True
     )
@@ -160,12 +161,29 @@ def create_time_series_chart(df_filtered):
             ),
             row=2, col=1
         )
+        
+        # 股票价格
+        fig.add_trace(
+            go.Scatter(
+                x=group['update_time'],
+                y=group['stock_price'],
+                mode='lines+markers',
+                name=f'{stock_code} - {expiry_date.strftime("%Y-%m-%d")} (Stock Price)',
+                line=dict(color=color, width=2, dash='dot'),
+                marker=dict(size=6),
+                hovertemplate='<b>%{fullData.name}</b><br>' +
+                            '时间: %{x}<br>' +
+                            '股票价格: $%{y:.2f}<br>' +
+                            '<extra></extra>'
+            ),
+            row=3, col=1
+        )
     
     # 更新布局
     fig.update_layout(
-        height=800,
+        height=1000,
         title={
-            'text': '期权最大痛点价格时间序列',
+            'text': '期权最大痛点价格与股票价格时间序列',
             'x': 0.5,
             'xanchor': 'center',
             'font': {'size': 20}
@@ -183,7 +201,7 @@ def create_time_series_chart(df_filtered):
     # 更新x轴
     fig.update_xaxes(
         title_text="更新时间",
-        row=2, col=1
+        row=3, col=1
     )
     
     # 更新y轴
@@ -194,6 +212,10 @@ def create_time_series_chart(df_filtered):
     fig.update_yaxes(
         title_text="最大痛点价格 ($)",
         row=2, col=1
+    )
+    fig.update_yaxes(
+        title_text="股票价格 ($)",
+        row=3, col=1
     )
     
     # 格式化x轴时间显示
@@ -253,18 +275,34 @@ def create_combined_chart(df_filtered):
                             '<extra></extra>'
             )
         )
+        
+        # 股票价格
+        fig.add_trace(
+            go.Scatter(
+                x=group['update_time'],
+                y=group['stock_price'],
+                mode='lines+markers',
+                name=f'{stock_code} 股票价格 - {expiry_date.strftime("%Y-%m-%d")}',
+                line=dict(color=color, width=3, dash='dot'),
+                marker=dict(size=8, symbol='circle'),
+                hovertemplate='<b>股票价格</b><br>' +
+                            '时间: %{x}<br>' +
+                            '价格: $%{y:.2f}<br>' +
+                            '<extra></extra>'
+            )
+        )
     
     # 更新布局
     fig.update_layout(
         height=600,
         title={
-            'text': '最大痛点价格对比 (Volume vs Open Interest)',
+            'text': '最大痛点价格与股票价格对比 (Volume vs Open Interest vs Stock Price)',
             'x': 0.5,
             'xanchor': 'center',
             'font': {'size': 18}
         },
         xaxis_title="更新时间",
-        yaxis_title="最大痛点价格 ($)",
+        yaxis_title="价格 ($)",
         showlegend=True,
         legend=dict(
             orientation="v",
@@ -619,8 +657,8 @@ def main():
             level_text = "低水位"
         
         st.info(
-            f"{level_emoji} **成交量水位: {level_text}** ({volume_level:.2f}x)  |  "
-            f"最新成交量: {latest_volume:,.0f}  |  平均成交量: {avg_volume:,.0f}"
+            f"最新成交量水位: {volume_level:.2f} |  "
+            f"最新成交量: {latest_volume:,.0f}"
         )
     else:
         st.info(f"📊 当前查看: **{selected_stock}** - **{selected_date.strftime('%Y-%m-%d')}**")
