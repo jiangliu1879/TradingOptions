@@ -59,9 +59,6 @@ class OptionsData(Base):
     # Contract size
     contract_size = Column(Integer, nullable=True)
     
-    # Metadata
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
     def __repr__(self):
         """String representation of the model"""
         return f"<OptionsData(stock_code='{self.stock_code}', symbol='{self.symbol}', type='{self.type}', strike={self.strike_price})>"
@@ -80,8 +77,7 @@ class OptionsData(Base):
             'turnover': self.turnover,
             'open_interest': self.open_interest,
             'implied_volatility': self.implied_volatility,
-            'contract_size': self.contract_size,
-            'created_at': self.created_at
+            'contract_size': self.contract_size
         }
     
     @classmethod

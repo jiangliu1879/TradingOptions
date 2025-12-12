@@ -43,8 +43,7 @@ class MaxPainCalculator:
                 'max_pain_price_volume': float,
                 'max_pain_price_open_interest': float,
                 'sum_volume': int,
-                'sum_open_interest': int,
-                'volume_std_deviation': float (if include_volume_std=True)
+                'sum_open_interest': int
             }
         """
         if not data_list:
@@ -52,8 +51,7 @@ class MaxPainCalculator:
                 'max_pain_price_volume': 0,
                 'max_pain_price_open_interest': 0,
                 'sum_volume': 0,
-                'sum_open_interest': 0,
-                'volume_std_deviation': 0.0
+                'sum_open_interest': 0
             }
         
         min_earn_volume = float('inf')
@@ -104,51 +102,12 @@ class MaxPainCalculator:
                 min_earn_open_interest = total_earn_open_interest
                 max_pain_price_open_interest = current_strike_price
 
-        # 计算最大痛点价格及其左右3档行权价的volume标准差
-        volume_std_deviation = 0.0
-        if include_volume_std:
-            volume_std_deviation = MaxPainCalculator.calculate_volume_std_deviation(data_list, max_pain_index)
-
         return {
             'max_pain_price_volume': max_pain_price_volume,
             'max_pain_price_open_interest': max_pain_price_open_interest,
             'sum_volume': sum_volume,
-            'sum_open_interest': sum_open_interest,
-            'volume_std_deviation': volume_std_deviation
+            'sum_open_interest': sum_open_interest
         }
-    
-    @staticmethod
-    def calculate_volume_std_deviation(data_list: List[Dict], current_index: int) -> float:
-        """
-        计算当前行权价及其左右3档行权价的volume标准差
-        
-        Args:
-            data_list: 期权数据列表
-            current_index: 当前行权价的索引
-            
-        Returns:
-            float: volume标准差
-        """
-        # 获取当前行权价及其左右3档的索引范围
-        start_index = max(0, current_index - 3)
-        end_index = min(len(data_list), current_index + 4)  # +4 因为要包含当前行权价
-        
-        volumes = []
-        
-        # 收集指定范围内的volume数据
-        for i in range(start_index, end_index):
-            strike_price = list(data_list[i].keys())[0]
-            put_volume = data_list[i][strike_price]['volume']['put']
-            call_volume = data_list[i][strike_price]['volume']['call']
-            total_volume = put_volume + call_volume
-            volumes.append(total_volume)
-        
-        # 计算标准差
-        if len(volumes) > 1:
-            import numpy as np
-            return np.round(statistics.stdev(volumes), 2)
-        else:
-            return 0.0
     
     @staticmethod
     def calculate_max_pain_with_metadata(
@@ -206,7 +165,6 @@ class MaxPainCalculator:
             f"  Open Interest-based: ${result['max_pain_price_open_interest']:.0f} "
             f"  Total Volume: {result['sum_volume']:,}\n"
             f"  Total Open Interest: {result['sum_open_interest']:,}\n"
-            f"  Volume Std Dev: {result['volume_std_deviation']:.2f}"
         )
 
 
@@ -222,17 +180,3 @@ def calculate_max_pain_from_data(data_list: List[Dict[str, Dict[str, Dict[str, i
         Dict containing max pain calculation results
     """
     return MaxPainCalculator.calculate_max_pain_from_options_data(data_list)
-
-
-def calculate_volume_std_deviation(data_list: List[Dict], current_index: int) -> float:
-    """
-    Convenience function for calculating volume standard deviation.
-    
-    Args:
-        data_list: List of option data dictionaries
-        current_index: Current strike price index
-        
-    Returns:
-        Volume standard deviation
-    """
-    return MaxPainCalculator.calculate_volume_std_deviation(data_list, current_index)

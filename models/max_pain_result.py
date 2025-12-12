@@ -44,9 +44,6 @@ class MaxPainResult(Base):
     # Total volume sum
     sum_volume = Column(Integer, nullable=False)
     
-    # Volume standard deviation for current strike ± 3 strikes
-    volume_std_deviation = Column(Float, nullable=True)
-    
     # Total open interest sum
     sum_open_interest = Column(Integer, nullable=False)
     
@@ -67,7 +64,6 @@ class MaxPainResult(Base):
             'max_pain_price_volume': self.max_pain_price_volume,
             'max_pain_price_open_interest': self.max_pain_price_open_interest,
             'sum_volume': self.sum_volume,
-            'volume_std_deviation': self.volume_std_deviation,
             'sum_open_interest': self.sum_open_interest,
             'stock_price': self.stock_price
         }

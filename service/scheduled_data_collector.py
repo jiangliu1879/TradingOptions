@@ -16,7 +16,7 @@ from typing import Optional
 
 # 添加项目根目录到路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from service.get_realtime_options_data import process_options_data, get_eastern_time, get_stock_realtime_price
+from utils.get_realtime_options_data import process_options_data, get_eastern_time, get_stock_realtime_price
 from models.options_data import OptionsData
 from models.max_pain_result import MaxPainResult
 from utils.max_pain_calculator import MaxPainCalculator
@@ -139,37 +139,6 @@ class ScheduledDataCollector:
             
         except Exception as e:
             self.logger.error(f"❌ 获取数据库统计信息失败: {e}")
-    
-    def calculate_volume_std_deviation(self, data_list: list, current_index: int) -> float:
-        """
-        计算当前行权价及其左右3档行权价的volume标准差
-        
-        Args:
-            data_list: 期权数据列表
-            current_index: 当前行权价的索引
-            
-        Returns:
-            float: volume标准差
-        """
-        # 获取当前行权价及其左右3档的索引范围
-        start_index = max(0, current_index - 3)
-        end_index = min(len(data_list), current_index + 4)  # +4 因为要包含当前行权价
-        
-        volumes = []
-        
-        # 收集指定范围内的volume数据
-        for i in range(start_index, end_index):
-            strike_price = list(data_list[i].keys())[0]
-            put_volume = data_list[i][strike_price]['volume']['put']
-            call_volume = data_list[i][strike_price]['volume']['call']
-            total_volume = put_volume + call_volume
-            volumes.append(total_volume)
-        
-        # 计算标准差
-        if len(volumes) > 1:
-            return statistics.stdev(volumes)
-        else:
-            return 0.0
     
     def process_options_data_for_max_pain(self, stock_code: str, expiry_date: date, update_time: str):
         """
@@ -372,7 +341,7 @@ def main(stock_code: str = "SPY.US"):
     collector = ScheduledDataCollector(stock_code, expiry_date)
     
     try:
-        collector.start_market_hours(15)
+        collector.start_market_hours(10)
     except Exception as e:
         print(f"❌ 程序运行出错: {e}")
         import traceback

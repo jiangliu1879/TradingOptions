@@ -42,9 +42,6 @@ class StockData(Base):
     volume = Column(Integer, nullable=False)
     turnover = Column(Float, nullable=True)
     
-    # Metadata
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
     def __repr__(self):
         """String representation of the model"""
         return f"<StockData(stock_code='{self.stock_code}', timestamp='{self.timestamp}', close={self.close})>"
@@ -60,8 +57,7 @@ class StockData(Base):
             'low': self.low,
             'close': self.close,
             'volume': self.volume,
-            'turnover': self.turnover,
-            'created_at': self.created_at
+            'turnover': self.turnover
         }
     
     @classmethod

@@ -136,6 +136,6 @@ if __name__ == "__main__":
     
     # process_options_data("SPY.US", date(2025, 10, 14), update_time)
 
-    stock_price = get_stock_realtime_price("SPY.US")
+    stock_price = get_stock_realtime_price("VIX.US")
     print(stock_price)
 
