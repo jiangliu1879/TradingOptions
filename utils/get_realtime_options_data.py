@@ -92,7 +92,7 @@ def get_option_data(stock_code: str, expiry_date: date, option_type: str, list_s
     return list_data
 
 
-def process_options_data(stock_code, expiry_date, update_time):
+def process_options_data(stock_code, expiry_date, update_time, save_to_database: bool = True):
     """处理期权数据并保存到CSV"""
     try:
         # 获取期权链数据
@@ -120,8 +120,9 @@ def process_options_data(stock_code, expiry_date, update_time):
         all_options_data = call_option_data + put_option_data
         
         # 保存到数据库
-        saved_count = OptionsData.save_options_data(all_options_data)
-        print(f"数据库保存完成：{saved_count} 条记录")
+        if save_to_database:
+            saved_count = OptionsData.save_options_data(all_options_data)
+            print(f"数据库保存完成：{saved_count} 条记录")
 
         return all_options_data
         

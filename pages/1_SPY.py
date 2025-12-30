@@ -12,8 +12,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from models.stock_data import StockData
 
 # 设置页面标题
-st.set_page_config(page_title="SPY 涨跌幅分析", layout="wide")
-st.title("📈 SPY 涨跌幅分析")
+st.set_page_config(page_title="SPY 分析", layout="wide")
+st.title("📈 SPY 分析")
 
 # 从数据库读取SPY数据
 @st.cache_data
@@ -194,137 +194,30 @@ if df is not None:
     
     st.plotly_chart(fig_dist, use_container_width=True)
     
-    # 涨跌幅统计详情
-    st.subheader("📋 涨跌幅统计详情")
+    # 收盘价曲线图
+    st.subheader("📈 收盘价曲线")
     
-    # 计算详细统计信息
-    price_changes = df['price_change_pct'].dropna()
+    # 创建收盘价时间序列图
+    fig_price = go.Figure()
     
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.write("**基本统计**")
-        st.write(f"平均日涨跌幅: {price_changes.mean():.3f}%")
-        st.write(f"中位数日涨跌幅: {price_changes.median():.3f}%")
-        st.write(f"标准差: {price_changes.std():.3f}%")
-        st.write(f"最大单日涨幅: {price_changes.max():.3f}%")
-        st.write(f"最大单日跌幅: {price_changes.min():.3f}%")
-        st.write(f"波动率(年化): {price_changes.std() * np.sqrt(252):.2f}%")
-    
-    with col2:
-        st.write("**分位数区间统计（以0为中心）**")
-        percentiles = [5, 10, 25, 50, 75, 90, 95]
-        price_changes_sorted = price_changes.sort_values()
-        n = len(price_changes_sorted)
-        for p in percentiles:
-            count = int(n * (p / 100) / 2)
-            if count == 0:
-                st.write(f"{p}分位区间：样本数过少，无法统计")
-                continue
-            # 以0为中心，向左、右各取count个
-            left = price_changes_sorted[price_changes_sorted < 0].tail(count)
-            right = price_changes_sorted[price_changes_sorted > 0].head(count)
-            if len(left) == 0 or len(right) == 0:
-                st.write(f"{p}分位区间：样本数过少，无法统计")
-                continue
-            min_val = left.min()
-            max_val = right.max()
-            st.write(f"{p}分位区间： {min_val:.3f}% ~ {max_val:.3f}%")
-
-    # 累计收益率走势图
-    st.subheader("📈 累计收益率走势")
-    
-    fig_cumulative = go.Figure()
-    
-    fig_cumulative.add_trace(go.Scatter(
+    fig_price.add_trace(go.Scatter(
         x=df['timestamp'],
-        y=df['cumulative_return'],
+        y=df['close'],
         mode='lines',
-        name='累计收益率',
-        line=dict(color='#2ca02c', width=2),
-        hovertemplate='<b>日期:</b> %{x}<br>' +
-                     '<b>累计收益率:</b> %{y:.2f}%<br>' +
-                     '<extra></extra>'
+        name='收盘价',
+        line=dict(color='#1f77b4', width=2),
+        hovertemplate='日期: %{x|%Y-%m-%d}<br>收盘价: $%{y:.2f}<extra></extra>'
     ))
     
-    fig_cumulative.update_layout(
-        title="SPY 累计收益率走势",
+    fig_price.update_layout(
+        title="SPY收盘价走势图",
         xaxis_title="日期",
-        yaxis_title="累计收益率 (%)",
+        yaxis_title="收盘价 ($)",
+        height=500,
         hovermode='x unified',
-        template='plotly_white',
-        height=500
+        showlegend=True
     )
     
-    st.plotly_chart(fig_cumulative, use_container_width=True)
-    
-    # 最大涨跌幅记录
-    st.subheader("🏆 最大涨跌幅记录")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.write("**最大单日涨幅**")
-        max_gain_idx = df['price_change_pct'].idxmax()
-        max_gain_row = df.loc[max_gain_idx]
-        st.write(f"日期: {max_gain_row['timestamp'].strftime('%Y-%m-%d')}")
-        st.write(f"涨幅: {max_gain_row['price_change_pct']:.3f}%")
-        st.write(f"收盘价: ${max_gain_row['close']:.2f}")
-        st.write(f"成交量: {max_gain_row['volume']:,.0f}")
-    
-    with col2:
-        st.write("**最大单日跌幅**")
-        max_loss_idx = df['price_change_pct'].idxmin()
-        max_loss_row = df.loc[max_loss_idx]
-        st.write(f"日期: {max_loss_row['timestamp'].strftime('%Y-%m-%d')}")
-        st.write(f"跌幅: {max_loss_row['price_change_pct']:.3f}%")
-        st.write(f"收盘价: ${max_loss_row['close']:.2f}")
-        st.write(f"成交量: {max_loss_row['volume']:,.0f}")
-    
-    # 最近30天涨跌幅
-    st.subheader("📅 最近30天涨跌幅")
-    
-    recent_data = df.tail(30).copy()
-    recent_data['date_str'] = recent_data['timestamp'].dt.strftime('%m-%d')
-    
-    fig_recent = go.Figure()
-    
-    colors = ['red' if x < 0 else 'green' for x in recent_data['price_change_pct']]
-    
-    fig_recent.add_trace(go.Bar(
-        x=recent_data['date_str'],
-        y=recent_data['price_change_pct'],
-        marker_color=colors,
-        name='日涨跌幅',
-        hovertemplate='<b>日期:</b> %{x}<br>' +
-                     '<b>涨跌幅:</b> %{y:.2f}%<br>' +
-                     '<extra></extra>'
-    ))
-    
-    fig_recent.update_layout(
-        title="最近30天日涨跌幅",
-        xaxis_title="日期",
-        yaxis_title="涨跌幅 (%)",
-        template='plotly_white',
-        height=400
-    )
-    
-    st.plotly_chart(fig_recent, use_container_width=True)
-    
-    # 数据表格
-    st.subheader("📋 详细数据")
-    
-    # 显示过滤后的数据
-    display_columns = ['timestamp', 'close', 'price_change', 'price_change_pct', 'direction', 'cumulative_return']
-    
-    # 创建显示用的数据副本，将timestamp格式化为只显示日期
-    display_df = df[display_columns].copy()
-    display_df['timestamp'] = display_df['timestamp'].dt.strftime('%Y-%m-%d')
-    
-    st.dataframe(
-        display_df.round(3),
-        use_container_width=True
-    )
+    st.plotly_chart(fig_price, use_container_width=True)
 
-else:
-    st.info("请先运行 longport_test.py 来获取SPY历史数据")
+

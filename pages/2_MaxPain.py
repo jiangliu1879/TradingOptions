@@ -22,11 +22,11 @@ from models.max_pain_result import MaxPainResult
 def calculate_volume_level():
     """
     计算成交量水位
-    水位计算逻辑：从stock_max_pain_results表中读取全部sum_volume值并计算均值，
-    用max_pain_results中最新的sum_volume除以前面计算的均值
+    水位计算逻辑：从stock_max_pain_results表中读取全部sum_volume值并计算最大值，
+    用max_pain_results中最新的sum_volume除以最大值
     """
     try:
-        # 从stock_max_pain_results表获取所有sum_volume值并计算均值
+        # 从stock_max_pain_results表获取所有sum_volume值并计算最大值
         stock_results = MaxPainResult.get_all_results()
         if not stock_results:
             return None, None, None
@@ -35,7 +35,7 @@ def calculate_volume_level():
         if not stock_volumes:
             return None, None, None
         
-        avg_volume = sum(stock_volumes) / len(stock_volumes)
+        max_volume = max(stock_volumes)
         
         # 从max_pain_results表获取最新的sum_volume
         max_pain_results = MaxPainResult.get_all_results()
@@ -46,13 +46,13 @@ def calculate_volume_level():
         latest_result = max(max_pain_results, key=lambda x: x['update_time'])
         latest_volume = latest_result['sum_volume']
         
-        # 计算水位（最新的成交量除以平均成交量）
-        if avg_volume > 0:
-            volume_level = latest_volume / avg_volume
+        # 计算水位（最新的成交量除以最大成交量）
+        if max_volume > 0:
+            volume_level = latest_volume / max_volume
         else:
             volume_level = 0
-        
-        return volume_level, latest_volume, avg_volume
+
+        return volume_level, latest_volume, max_volume
         
     except Exception as e:
         st.error(f"❌ 计算成交量水位失败: {e}")
@@ -77,7 +77,9 @@ def load_max_pain_data():
                 'expiry_date': result.expiry_date,
                 'update_time': result.update_time,
                 'max_pain_price_volume': result.max_pain_price_volume,
+                'volume_strike_price': result.volume_strike_price,
                 'max_pain_price_open_interest': result.max_pain_price_open_interest,
+                'open_interest_strike_price': result.open_interest_strike_price,
                 'sum_volume': result.sum_volume,
                 'sum_open_interest': result.sum_open_interest,
                 'stock_price': result.stock_price
@@ -478,46 +480,11 @@ def main():
         help="选择一个到期日期进行查看"
     )
     
-    # 时间范围筛选
-    if len(df) > 1:
-        min_time = df['update_time'].min()
-        max_time = df['update_time'].max()
-        
-        st.sidebar.subheader("⏰ 时间范围")
-        
-        col1, col2 = st.sidebar.columns(2)
-        with col1:
-            start_time = st.date_input(
-                "开始日期",
-                value=min_time.date(),
-                min_value=min_time.date(),
-                max_value=max_time.date()
-            )
-        
-        with col2:
-            end_time = st.date_input(
-                "结束日期",
-                value=max_time.date(),
-                min_value=min_time.date(),
-                max_value=max_time.date()
-            )
-        
-        # 时间筛选
-        start_datetime = pd.Timestamp.combine(start_time, pd.Timestamp.min.time())
-        end_datetime = pd.Timestamp.combine(end_time, pd.Timestamp.max.time())
-        
-        df_time_filtered = df[
-            (df['update_time'] >= start_datetime) & 
-            (df['update_time'] <= end_datetime)
-        ]
-    else:
-        df_time_filtered = df
-    
     # 应用筛选 - 基于单选结果
     if selected_stock and selected_date:
-        df_filtered = df_time_filtered[
-            (df_time_filtered['stock_code'] == selected_stock) &
-            (df_time_filtered['expiry_date'] == selected_date)
+        df_filtered = df[
+            (df['stock_code'] == selected_stock) &
+            (df['expiry_date'] == selected_date)
         ]
     else:
         df_filtered = pd.DataFrame()  # 如果没有选择，显示空数据
@@ -533,7 +500,7 @@ def main():
         st.stop()
     
     # 计算并显示成交量水位
-    volume_level, latest_volume, avg_volume = calculate_volume_level()
+    volume_level, latest_volume, max_volume = calculate_volume_level()
     
     # 显示当前选择的股票和到期日期以及成交量水位
     if volume_level is not None:
@@ -557,7 +524,7 @@ def main():
         
         st.info(
             f"最新成交量水位: {volume_level:.2f} |  "
-            f"最新成交量: {latest_volume:,.0f}"
+            f"最新成交量: {latest_volume:,.0f} | 最大成交量: {max_volume:,.0f}"
         )
     else:
         st.info(f"📊 当前查看: **{selected_stock}** - **{selected_date.strftime('%Y-%m-%d')}**")

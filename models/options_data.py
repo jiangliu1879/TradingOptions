@@ -7,7 +7,7 @@ This module defines the SQLAlchemy model for the options_data table.
 from sqlalchemy import Column, Integer, String, Float, DateTime, Date, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
+from datetime import datetime, date
 import os
 
 # Create the declarative base
@@ -305,28 +305,59 @@ class OptionsData(Base):
             }
         finally:
             session.close()
+    
+    @classmethod
+    def delete_by_expiry_date(cls, expiry_date, stock_code=None):
+        """
+        Delete options data by expiry date
+        
+        Args:
+            expiry_date (date): Expiry date to delete
+            stock_code (str): Optional stock code filter
+            
+        Returns:
+            int: Number of records deleted
+        """
+        session = cls.get_session()
+        try:
+            query = session.query(cls).filter(cls.expiry_date == expiry_date)
+            
+            if stock_code:
+                query = query.filter(cls.stock_code == stock_code)
+            
+            # Count records before deletion
+            count = query.count()
+            
+            # Delete records
+            query.delete(synchronize_session=False)
+            session.commit()
+            
+            print(f"✅ 成功删除 {count} 条到期日期为 {expiry_date} 的期权数据记录")
+            return count
+        except Exception as e:
+            session.rollback()
+            print(f"❌ 删除期权数据时出错: {e}")
+            return 0
+        finally:
+            session.close()
 
 
 if __name__ == "__main__":
-    # 演示 OptionsData 类的各种方法
-    print("🚀 执行 OptionsData 类方法演示")
+    # 删除到期日期为 2025-12-17 的数据
+    print("🗑️  删除到期日期为 2025-12-17 的期权数据")
     print("=" * 50)
     
-    # 1. 创建数据库表
-    print("📊 创建数据库表:")
-    OptionsData.create_tables()
-    print()
+    expiry_date_to_delete = date(2025, 12, 17)
     
-    # 2. 获取所有股票代码
-    print("📊 获取所有期权股票代码:")
-    stock_codes = OptionsData.get_stock_codes()
-    print(f"   {stock_codes}")
-    print()
+    # 先查看有多少条记录
+    records_before = OptionsData.get_options_data(expiry_date=expiry_date_to_delete)
+    print(f"📊 找到 {len(records_before)} 条到期日期为 {expiry_date_to_delete} 的记录")
     
-    # 3. 获取所有到期日期
-    print("📅 获取所有到期日期:")
-    expiry_dates = OptionsData.get_expiry_dates()
-    print(f"   {expiry_dates}")
-    print()
+    if len(records_before) > 0:
+        # 执行删除
+        deleted_count = OptionsData.delete_by_expiry_date(expiry_date_to_delete)
+        print(f"✅ 删除完成！共删除 {deleted_count} 条记录")
+    else:
+        print("ℹ️  没有找到需要删除的记录")
     
-    print("✅ 演示完成！")
+    print("=" * 50)

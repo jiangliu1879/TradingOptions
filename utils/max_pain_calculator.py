@@ -9,9 +9,17 @@ The calculator supports both volume-based and open interest-based max pain calcu
 along with volume standard deviation analysis around the max pain price.
 """
 
+import os
+import sys
+# 添加项目根目录到路径
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import statistics
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import date
+from collections import defaultdict
+from models.options_data import OptionsData
+
 
 
 class MaxPainCalculator:
@@ -25,8 +33,7 @@ class MaxPainCalculator:
     
     @staticmethod
     def calculate_max_pain_from_options_data(
-        data_list: List[Dict[str, Dict[str, Dict[str, int]]]], 
-        include_volume_std: bool = True
+        data_list: List[Dict[str, Dict[str, Dict[str, int]]]]
     ) -> Dict[str, Any]:
         """
         Calculate max pain from a list of options data.
@@ -35,8 +42,6 @@ class MaxPainCalculator:
             data_list: List of option data dictionaries in format:
                       [{strike_price: {"volume": {"put": int, "call": int}, 
                                      "open_interest": {"put": int, "call": int}}}, ...]
-            include_volume_std: Whether to calculate volume standard deviation
-            
         Returns:
             Dict containing max pain calculation results:
             {
@@ -58,7 +63,8 @@ class MaxPainCalculator:
         min_earn_open_interest = float('inf')
         max_pain_price_volume = 0
         max_pain_price_open_interest = 0
-        max_pain_index = 0
+        max_pain_index_volume = 0
+        max_pain_index_open_interest = 0
         sum_volume = 0
         sum_open_interest = 0
         
@@ -95,18 +101,24 @@ class MaxPainCalculator:
             if total_earn_volume < min_earn_volume:
                 min_earn_volume = total_earn_volume
                 max_pain_price_volume = current_strike_price
-                max_pain_index = i
+                max_pain_index_volume = i
             
             # 更新基于open_interest的最大痛点
             if total_earn_open_interest < min_earn_open_interest:
                 min_earn_open_interest = total_earn_open_interest
                 max_pain_price_open_interest = current_strike_price
+                max_pain_index_open_interest = i
+                
+        volume_strike_price = data_list[max_pain_index_volume][max_pain_price_volume]['volume']['put'] + data_list[max_pain_index_volume][max_pain_price_volume]['volume']['call']
+        open_interest_strike_price = data_list[max_pain_index_open_interest][max_pain_price_open_interest]['open_interest']['put'] + data_list[max_pain_index_open_interest][max_pain_price_open_interest]['open_interest']['call']
 
         return {
             'max_pain_price_volume': max_pain_price_volume,
             'max_pain_price_open_interest': max_pain_price_open_interest,
             'sum_volume': sum_volume,
-            'sum_open_interest': sum_open_interest
+            'sum_open_interest': sum_open_interest,
+            'volume_strike_price': volume_strike_price,
+            'open_interest_strike_price': open_interest_strike_price
         }
     
     @staticmethod
@@ -114,8 +126,7 @@ class MaxPainCalculator:
         stock_code: str,
         expiry_date: date,
         update_time: str,
-        data_list: List[Dict[str, Dict[str, Dict[str, int]]]],
-        include_volume_std: bool = True
+        data_list: List[Dict[str, Dict[str, Dict[str, int]]]]
     ) -> Optional[Dict[str, Any]]:
         """
         Calculate max pain with additional metadata for database storage.
@@ -125,7 +136,6 @@ class MaxPainCalculator:
             expiry_date: Option expiry date
             update_time: Data update timestamp
             data_list: List of option data dictionaries
-            include_volume_std: Whether to calculate volume standard deviation
             
         Returns:
             Dict containing max pain results with metadata, or None if no data
@@ -134,9 +144,7 @@ class MaxPainCalculator:
             return None
             
         # Calculate max pain
-        max_pain_result = MaxPainCalculator.calculate_max_pain_from_options_data(
-            data_list, include_volume_std
-        )
+        max_pain_result = MaxPainCalculator.calculate_max_pain_from_options_data(data_list)
         
         # Add metadata
         result = {
@@ -167,6 +175,71 @@ class MaxPainCalculator:
             f"  Total Open Interest: {result['sum_open_interest']:,}\n"
         )
 
+    @staticmethod
+    def calculate_max_pain2(data_list: list):
+        sum_volume = 0
+        sum_open_interest = 0
+        for item in items:
+            print(item.type, item.strike_price, item.volume, item.open_interest)
+        #     sum_volume += item.volume
+        #     sum_open_interest += item.open_interest
+        # print(f"sum_volume: {sum_volume}, sum_open_interest: {sum_open_interest}")
+        print("===============================\n\n")
+        # min_earn_volume = float('inf')
+        # min_earn_open_interest = float('inf')
+        # max_pain_price_volume = 0
+        # max_pain_price_open_interest = 0
+        # max_pain_index = 0
+        # sum_volume = 0
+        # sum_open_interest = 0
+        
+        # # 遍历每个行权价，计算在该价格到期时的期权卖方收益
+        # for i in range(len(data_list)):
+        #     put_earn_volume = 0
+        #     put_earn_open_interest = 0
+        #     call_earn_volume = 0
+        #     call_earn_open_interest = 0
+            
+        #     # 计算高于当前行权价的put期权收益
+        #     # 如果股价在put行权价以下，put期权买方盈利，卖方亏损
+        #     for data_item in data_list[i + 1:]:
+        #         strike_price = list(data_item.keys())[0]
+        #         put_earn_volume += data_item[strike_price]['volume']['put']
+        #         put_earn_open_interest += data_item[strike_price]['open_interest']['put']
+        #         sum_volume += data_item[strike_price]['volume']['put']
+        #         sum_open_interest += data_item[strike_price]['open_interest']['put']
+            
+        #     # 计算低于当前行权价的call期权收益
+        #     # 如果股价在call行权价以上，call期权买方盈利，卖方亏损
+        #     for data_item in data_list[:i]:
+        #         strike_price = list(data_item.keys())[0]
+        #         call_earn_volume += data_item[strike_price]['volume']['call']
+        #         call_earn_open_interest += data_item[strike_price]['open_interest']['call']
+        #         sum_volume += data_item[strike_price]['volume']['call']
+        #         sum_open_interest += data_item[strike_price]['open_interest']['call']
+
+        #     current_strike_price = list(data_list[i].keys())[0]
+        #     total_earn_volume = put_earn_volume + call_earn_volume
+        #     total_earn_open_interest = put_earn_open_interest + call_earn_open_interest
+            
+        #     # 更新基于volume的最大痛点
+        #     if total_earn_volume < min_earn_volume:
+        #         min_earn_volume = total_earn_volume
+        #         max_pain_price_volume = current_strike_price
+        #         max_pain_index = i
+            
+        #     # 更新基于open_interest的最大痛点
+        #     if total_earn_open_interest < min_earn_open_interest:
+        #         min_earn_open_interest = total_earn_open_interest
+        #         max_pain_price_open_interest = current_strike_price
+
+        # return {
+        #     'max_pain_price_volume': max_pain_price_volume,
+        #     'max_pain_price_open_interest': max_pain_price_open_interest,
+        #     'sum_volume': sum_volume,
+        #     'sum_open_interest': sum_open_interest
+        # }
+
 
 # Convenience functions for backward compatibility
 def calculate_max_pain_from_data(data_list: List[Dict[str, Dict[str, Dict[str, int]]]]) -> Dict[str, Any]:
@@ -180,3 +253,23 @@ def calculate_max_pain_from_data(data_list: List[Dict[str, Dict[str, Dict[str, i
         Dict containing max pain calculation results
     """
     return MaxPainCalculator.calculate_max_pain_from_options_data(data_list)
+
+
+if __name__ == "__main__":
+    stock_code = "SPY.US"
+    expiry_date = date(2025, 12, 12)
+    data_list = OptionsData.get_options_data(stock_code, expiry_date)
+    
+    # 按照update_time分组
+    grouped_by_time = defaultdict(list)
+    for data_item in data_list:
+        grouped_by_time[data_item.update_time].append(data_item)
+    
+    # 每组数据按照strike_price从小到大排序
+    for update_time in grouped_by_time:
+        grouped_by_time[update_time].sort(key=lambda x: x.strike_price)
+    
+    print(f"数据总数: {len(data_list)}")
+    print(f"按update_time分组后的组数: {len(grouped_by_time)}")
+    for update_time, items in sorted(grouped_by_time.items()):
+        MaxPainCalculator.calculate_max_pain2(items)

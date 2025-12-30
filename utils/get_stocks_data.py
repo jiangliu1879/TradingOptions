@@ -181,7 +181,7 @@ if __name__ == "__main__":
     
     # 示例1: 获取单个股票数据到数据库
     print("📊 示例1: 获取单个股票数据到数据库")
-    result = get_single_stock_data_to_db("US.VIX", date(2024, 1, 1), date(2025, 12, 31))
+    result = get_single_stock_data_to_db("SPY.US", date(1999, 1, 1), date(1999, 12, 31))
     print(f"结果: {'成功' if result else '失败'}")
     print()
     

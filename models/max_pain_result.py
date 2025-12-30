@@ -49,6 +49,12 @@ class MaxPainResult(Base):
     
     # Stock price at the time of calculation
     stock_price = Column(Float, nullable=False, default=0)
+
+    # Volume strike price
+    volume_strike_price = Column(Float, nullable=True, default=0)
+
+    # Open interest strike price
+    open_interest_strike_price = Column(Float, nullable=True, default=0)
     
     def __repr__(self):
         """String representation of the model"""
@@ -65,7 +71,9 @@ class MaxPainResult(Base):
             'max_pain_price_open_interest': self.max_pain_price_open_interest,
             'sum_volume': self.sum_volume,
             'sum_open_interest': self.sum_open_interest,
-            'stock_price': self.stock_price
+            'stock_price': self.stock_price,
+            'volume_strike_price': self.volume_strike_price,
+            'open_interest_strike_price': self.open_interest_strike_price,
         }
     
     @classmethod

@@ -218,8 +218,7 @@ class ScheduledDataCollector:
                 stock_code=stock_code,
                 expiry_date=expiry_date,
                 update_time=update_time,
-                data_list=data_list,
-                include_volume_std=True
+                data_list=data_list
             )
             
             if result:
@@ -341,7 +340,7 @@ def main(stock_code: str = "SPY.US"):
     collector = ScheduledDataCollector(stock_code, expiry_date)
     
     try:
-        collector.start_market_hours(10)
+        collector.start_market_hours(15)
     except Exception as e:
         print(f"❌ 程序运行出错: {e}")
         import traceback
