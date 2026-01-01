@@ -49,7 +49,7 @@ class MaxPainResult(Base):
     
     # Stock price at the time of calculation
     stock_price = Column(Float, nullable=False, default=0)
-
+    
     # Volume strike price
     volume_strike_price = Column(Float, nullable=True, default=0)
 
@@ -259,11 +259,16 @@ class MaxPainResult(Base):
             session.close()
     
     @classmethod
-    def get_all_results(cls):
+    def get_all_results(cls, stock_code=None, expiry_date=None):
         """Get all max pain results from database"""
         session = cls.get_session()
         try:
-            results = session.query(cls).all()
+            query = session.query(cls)
+            if stock_code:
+                query = query.filter(cls.stock_code == stock_code)
+            if expiry_date:
+                query = query.filter(cls.expiry_date == expiry_date)
+            results = query.order_by(cls.stock_code, cls.expiry_date, cls.update_time).all()
             return [result.to_dict() for result in results]
         except Exception as e:
             print(f"❌ 查询数据失败: {e}")

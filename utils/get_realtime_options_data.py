@@ -112,6 +112,7 @@ def process_options_data(stock_code, expiry_date, update_time, save_to_database:
 
         call_option_data = get_option_data(stock_code, expiry_date, 'call', call_symbols, update_time)
         import time
+        time.sleep(60)
         put_option_data = get_option_data(stock_code, expiry_date, 'put', put_symbols, update_time)
         
         print(f"处理完成：{len(call_option_data)} 个看涨期权，{len(put_option_data)} 个看跌期权")

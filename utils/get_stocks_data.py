@@ -181,9 +181,13 @@ if __name__ == "__main__":
     
     # 示例1: 获取单个股票数据到数据库
     print("📊 示例1: 获取单个股票数据到数据库")
-    result = get_single_stock_data_to_db("SPY.US", date(1999, 1, 1), date(1999, 12, 31))
+    # list_stock_codes = StockData.get_stock_codes()
+    # for stock_code in list_stock_codes:
+    #     result = get_single_stock_data_to_db(stock_code, date(2025, 12, 31), date(2025, 12, 31))
+    #     print(f"结果: {'成功' if result else '失败'}")
+
+    result = get_single_stock_data_to_db("TEM.US", date(2023, 1, 1), date(2025, 12, 31))
     print(f"结果: {'成功' if result else '失败'}")
-    print()
     
     # 示例2: 获取所有股票数据到数据库
     # print("📊 示例2: 获取所有股票数据到数据库")
