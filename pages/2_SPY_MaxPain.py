@@ -121,11 +121,12 @@ def create_time_series_chart(df_filtered):
         st.warning("⚠️ 没有数据可以显示")
         return
     
-    # 创建子图
+    # 创建子图（5行：最大痛点价格Volume、最大痛点价格OI、股票价格、成交量、持仓量）
     fig = make_subplots(
-        rows=3, cols=1,
-        subplot_titles=('最大痛点价格 - Volume', '最大痛点价格 - Open Interest', '股票价格'),
-        vertical_spacing=0.1,
+        rows=5, cols=1,
+        subplot_titles=('最大痛点价格 - Volume', '最大痛点价格 - Open Interest', '股票价格', 
+                       '成交量 (Sum Volume)', '持仓量 (Sum Open Interest)'),
+        vertical_spacing=0.08,
         shared_xaxes=True
     )
     
@@ -135,8 +136,11 @@ def create_time_series_chart(df_filtered):
     stock_color = '#2ca02c'       # 绿色 - 股票价格
     
     # 按股票代码和到期日期分组绘制
+    colors = px.colors.qualitative.Set1
+    
     for i, (stock_expiry, group) in enumerate(df_filtered.groupby(['stock_code', 'expiry_date'])):
         stock_code, expiry_date = stock_expiry
+        color = colors[i % len(colors)]
         
         # 确保数据按时间排序
         group = group.sort_values('update_time')
@@ -191,180 +195,6 @@ def create_time_series_chart(df_filtered):
             ),
             row=3, col=1
         )
-    
-    # 更新布局
-    fig.update_layout(
-        height=1000,
-        title={
-            'text': '期权最大痛点价格与股票价格时间序列',
-            'x': 0.5,
-            'xanchor': 'center',
-            'font': {'size': 20}
-        },
-        showlegend=True,
-        legend=dict(
-            orientation="v",
-            yanchor="top",
-            y=1,
-            xanchor="left",
-            x=1.02
-        )
-    )
-    
-    # 更新x轴
-    fig.update_xaxes(
-        title_text="更新时间",
-        row=3, col=1
-    )
-    
-    # 更新y轴
-    fig.update_yaxes(
-        title_text="最大痛点价格 ($)",
-        row=1, col=1
-    )
-    fig.update_yaxes(
-        title_text="最大痛点价格 ($)",
-        row=2, col=1
-    )
-    fig.update_yaxes(
-        title_text="股票价格 ($)",
-        row=3, col=1
-    )
-    
-    # 格式化x轴时间显示
-    fig.update_xaxes(
-        tickformat="%m-%d %H:%M",
-        tickangle=45
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
-
-
-def create_combined_chart(df_filtered):
-    """创建合并图表"""
-    if df_filtered.empty:
-        return
-    
-    fig = go.Figure()
-    
-    # 定义三种固定的颜色
-    volume_color = '#1f77b4'      # 蓝色 - Volume最大痛点价格
-    oi_color = '#ff7f0e'          # 橙色 - Open Interest最大痛点价格
-    stock_color = '#2ca02c'       # 绿色 - 股票价格
-    
-    # 定义不同的标记符号用于区分不同的股票/到期日期组合
-    marker_symbols = ['circle', 'square', 'diamond', 'triangle-up', 'triangle-down', 
-                     'star', 'pentagon', 'hexagon', 'cross', 'x']
-    
-    # 按股票代码和到期日期分组绘制
-    for i, (stock_expiry, group) in enumerate(df_filtered.groupby(['stock_code', 'expiry_date'])):
-        stock_code, expiry_date = stock_expiry
-        symbol = marker_symbols[i % len(marker_symbols)]
-        
-        # 确保数据按时间排序
-        group = group.sort_values('update_time')
-        
-        # Volume最大痛点价格 - 使用蓝色
-        fig.add_trace(
-            go.Scatter(
-                x=group['update_time'],
-                y=group['max_pain_price_volume'],
-                mode='lines+markers',
-                name=f'{stock_code} Volume - {expiry_date.strftime("%Y-%m-%d")}',
-                line=dict(color=volume_color, width=3),
-                marker=dict(size=8, color=volume_color, symbol=symbol),
-                hovertemplate='<b>Volume最大痛点</b><br>' +
-                            '时间: %{x}<br>' +
-                            '价格: $%{y:.0f}<br>' +
-                            '<extra></extra>'
-            )
-        )
-        
-        # Open Interest最大痛点价格 - 使用橙色
-        fig.add_trace(
-            go.Scatter(
-                x=group['update_time'],
-                y=group['max_pain_price_open_interest'],
-                mode='lines+markers',
-                name=f'{stock_code} OI - {expiry_date.strftime("%Y-%m-%d")}',
-                line=dict(color=oi_color, width=3),
-                marker=dict(size=8, color=oi_color, symbol=symbol),
-                hovertemplate='<b>OI最大痛点</b><br>' +
-                            '时间: %{x}<br>' +
-                            '价格: $%{y:.0f}<br>' +
-                            '<extra></extra>'
-            )
-        )
-        
-        # 股票价格 - 使用绿色
-        fig.add_trace(
-            go.Scatter(
-                x=group['update_time'],
-                y=group['stock_price'],
-                mode='lines+markers',
-                name=f'{stock_code} 股票价格 - {expiry_date.strftime("%Y-%m-%d")}',
-                line=dict(color=stock_color, width=3),
-                marker=dict(size=8, color=stock_color, symbol=symbol),
-                hovertemplate='<b>股票价格</b><br>' +
-                            '时间: %{x}<br>' +
-                            '价格: $%{y:.2f}<br>' +
-                            '<extra></extra>'
-            )
-        )
-    
-    # 更新布局
-    fig.update_layout(
-        height=600,
-        title={
-            'text': '最大痛点价格与股票价格对比 (Volume vs Open Interest vs Stock Price)',
-            'x': 0.5,
-            'xanchor': 'center',
-            'font': {'size': 18}
-        },
-        xaxis_title="更新时间",
-        yaxis_title="价格 ($)",
-        showlegend=True,
-        legend=dict(
-            orientation="v",
-            yanchor="top",
-            y=1,
-            xanchor="left",
-            x=1.02
-        )
-    )
-    
-    # 格式化x轴
-    fig.update_xaxes(
-        tickformat="%m-%d %H:%M",
-        tickangle=45
-    )
-    
-    st.plotly_chart(fig, use_container_width=True)
-
-
-def create_volume_oi_chart(df_filtered):
-    """创建成交量和持仓量图表"""
-    if df_filtered.empty:
-        st.warning("⚠️ 没有数据可以显示")
-        return
-    
-    # 创建子图
-    fig = make_subplots(
-        rows=2, cols=1,
-        subplot_titles=('成交量 (Sum Volume)', '持仓量 (Sum Open Interest)'),
-        vertical_spacing=0.1,
-        shared_xaxes=True
-    )
-    
-    # 按股票代码和到期日期分组绘制
-    colors = px.colors.qualitative.Set1
-    
-    for i, (stock_expiry, group) in enumerate(df_filtered.groupby(['stock_code', 'expiry_date'])):
-        stock_code, expiry_date = stock_expiry
-        color = colors[i % len(colors)]
-        
-        # 确保数据按时间排序
-        group = group.sort_values('update_time')
         
         # 成交量曲线
         fig.add_trace(
@@ -380,7 +210,7 @@ def create_volume_oi_chart(df_filtered):
                             '成交量: %{y:,.0f}<br>' +
                             '<extra></extra>'
             ),
-            row=1, col=1
+            row=4, col=1
         )
         
         # 持仓量曲线
@@ -397,14 +227,14 @@ def create_volume_oi_chart(df_filtered):
                             '持仓量: %{y:,.0f}<br>' +
                             '<extra></extra>'
             ),
-            row=2, col=1
+            row=5, col=1
         )
     
     # 更新布局
     fig.update_layout(
-        height=800,
+        height=1400,
         title={
-            'text': '期权成交量和持仓量时间序列',
+            'text': '期权最大痛点价格、股票价格、成交量和持仓量时间序列',
             'x': 0.5,
             'xanchor': 'center',
             'font': {'size': 20}
@@ -422,22 +252,208 @@ def create_volume_oi_chart(df_filtered):
     # 更新x轴
     fig.update_xaxes(
         title_text="更新时间",
-        row=2, col=1
+        row=5, col=1
     )
     
     # 更新y轴
     fig.update_yaxes(
+        title_text="最大痛点价格 ($)",
+        row=1, col=1
+    )
+    fig.update_yaxes(
+        title_text="最大痛点价格 ($)",
+        row=2, col=1
+    )
+    fig.update_yaxes(
+        title_text="股票价格 ($)",
+        row=3, col=1
+    )
+    fig.update_yaxes(
         title_text="成交量",
-        row=1, col=1,
+        row=4, col=1,
         tickformat=",.0f"
     )
     fig.update_yaxes(
         title_text="持仓量",
-        row=2, col=1,
+        row=5, col=1,
         tickformat=",.0f"
     )
     
     # 格式化x轴时间显示
+    fig.update_xaxes(
+        tickformat="%m-%d %H:%M",
+        tickangle=45
+    )
+    
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def create_combined_chart(df_filtered):
+    """创建合并图表"""
+    if df_filtered.empty:
+        return
+    
+    # 创建子图（4行：价格对比、成交量、持仓量、成交量与持仓量对比）
+    fig = make_subplots(
+        rows=4, cols=1,
+        subplot_titles=('最大痛点价格与股票价格对比', '成交量 (Sum Volume)', '持仓量 (Sum Open Interest)'),
+        vertical_spacing=0.1,
+        shared_xaxes=True
+    )
+    
+    # 定义三种固定的颜色
+    volume_color = '#1f77b4'      # 蓝色 - Volume最大痛点价格
+    oi_color = '#ff7f0e'          # 橙色 - Open Interest最大痛点价格
+    stock_color = '#2ca02c'       # 绿色 - 股票价格
+    
+    # 定义不同的标记符号用于区分不同的股票/到期日期组合
+    marker_symbols = ['circle', 'square', 'diamond', 'triangle-up', 'triangle-down', 
+                     'star', 'pentagon', 'hexagon', 'cross', 'x']
+    
+    colors = px.colors.qualitative.Set1
+    
+    # 按股票代码和到期日期分组绘制
+    for i, (stock_expiry, group) in enumerate(df_filtered.groupby(['stock_code', 'expiry_date'])):
+        stock_code, expiry_date = stock_expiry
+        symbol = marker_symbols[i % len(marker_symbols)]
+        color = colors[i % len(colors)]
+        
+        # 确保数据按时间排序
+        group = group.sort_values('update_time')
+        
+        # 第一行：价格对比
+        # Volume最大痛点价格 - 使用蓝色
+        fig.add_trace(
+            go.Scatter(
+                x=group['update_time'],
+                y=group['max_pain_price_volume'],
+                mode='lines+markers',
+                name=f'{stock_code} Volume - {expiry_date.strftime("%Y-%m-%d")}',
+                line=dict(color=volume_color, width=3),
+                marker=dict(size=8, color=volume_color, symbol=symbol),
+                hovertemplate='<b>Volume最大痛点</b><br>' +
+                            '时间: %{x}<br>' +
+                            '价格: $%{y:.0f}<br>' +
+                            '<extra></extra>'
+            ),
+            row=1, col=1
+        )
+        
+        # Open Interest最大痛点价格 - 使用橙色
+        fig.add_trace(
+            go.Scatter(
+                x=group['update_time'],
+                y=group['max_pain_price_open_interest'],
+                mode='lines+markers',
+                name=f'{stock_code} OI - {expiry_date.strftime("%Y-%m-%d")}',
+                line=dict(color=oi_color, width=3),
+                marker=dict(size=8, color=oi_color, symbol=symbol),
+                hovertemplate='<b>OI最大痛点</b><br>' +
+                            '时间: %{x}<br>' +
+                            '价格: $%{y:.0f}<br>' +
+                            '<extra></extra>'
+            ),
+            row=1, col=1
+        )
+        
+        # 股票价格 - 使用绿色
+        fig.add_trace(
+            go.Scatter(
+                x=group['update_time'],
+                y=group['stock_price'],
+                mode='lines+markers',
+                name=f'{stock_code} 股票价格 - {expiry_date.strftime("%Y-%m-%d")}',
+                line=dict(color=stock_color, width=3),
+                marker=dict(size=8, color=stock_color, symbol=symbol),
+                hovertemplate='<b>股票价格</b><br>' +
+                            '时间: %{x}<br>' +
+                            '价格: $%{y:.2f}<br>' +
+                            '<extra></extra>'
+            ),
+            row=1, col=1
+        )
+        
+        # 第二行：成交量
+        fig.add_trace(
+            go.Scatter(
+                x=group['update_time'],
+                y=group['sum_volume'],
+                mode='lines+markers',
+                name=f'{stock_code} - {expiry_date.strftime("%Y-%m-%d")} (Volume)',
+                line=dict(color=color, width=2),
+                marker=dict(size=6),
+                hovertemplate='<b>%{fullData.name}</b><br>' +
+                            '时间: %{x}<br>' +
+                            '成交量: %{y:,.0f}<br>' +
+                            '<extra></extra>'
+            ),
+            row=2, col=1
+        )
+        
+        # 第三行：持仓量
+        fig.add_trace(
+            go.Scatter(
+                x=group['update_time'],
+                y=group['sum_open_interest'],
+                mode='lines+markers',
+                name=f'{stock_code} - {expiry_date.strftime("%Y-%m-%d")} (OI)',
+                line=dict(color=color, width=2, dash='dash'),
+                marker=dict(size=6),
+                hovertemplate='<b>%{fullData.name}</b><br>' +
+                            '时间: %{x}<br>' +
+                            '持仓量: %{y:,.0f}<br>' +
+                            '<extra></extra>'
+            ),
+            row=3, col=1
+        )
+    
+    # 更新布局
+    fig.update_layout(
+        height=1200,
+        title={
+            'text': '最大痛点价格、股票价格、成交量和持仓量对比',
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 20}
+        },
+        showlegend=True,
+        legend=dict(
+            orientation="v",
+            yanchor="top",
+            y=1,
+            xanchor="left",
+            x=1.02
+        )
+    )
+    
+    # 更新x轴
+    fig.update_xaxes(
+        title_text="更新时间",
+        row=4, col=1
+    )
+    
+    # 更新y轴
+    fig.update_yaxes(
+        title_text="价格 ($)",
+        row=1, col=1
+    )
+    fig.update_yaxes(
+        title_text="成交量",
+        row=2, col=1,
+        tickformat=",.0f"
+    )
+    fig.update_yaxes(
+        title_text="持仓量",
+        row=3, col=1,
+        tickformat=",.0f"
+    )
+    fig.update_yaxes(
+        title_text="成交量 / 持仓量",
+        row=4, col=1,
+        tickformat=",.0f"
+    )
+    
+    # 格式化x轴
     fig.update_xaxes(
         tickformat="%m-%d %H:%M",
         tickangle=45
@@ -566,7 +582,7 @@ def main():
     # 图表显示选项
     chart_type = st.selectbox(
         "选择图表类型",
-        ["时间序列图表", "合并对比图表", "成交量和持仓量图表"],
+        ["时间序列图表", "合并对比图表"],
         help="选择要显示的图表类型"
     )
     
@@ -576,9 +592,6 @@ def main():
     elif chart_type == "合并对比图表":
         st.subheader("📊 最大痛点价格对比")
         create_combined_chart(df_filtered)
-    elif chart_type == "成交量和持仓量图表":
-        st.subheader("📊 成交量和持仓量时间序列")
-        create_volume_oi_chart(df_filtered)
     
     # 添加期权Volume柱状图
     st.markdown("---")

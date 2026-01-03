@@ -92,7 +92,7 @@ def get_option_data(stock_code: str, expiry_date: date, option_type: str, list_s
     return list_data
 
 
-def process_options_data(stock_code, expiry_date, update_time, save_to_database: bool = True):
+def process_options_data(stock_code, expiry_date, update_time, stock_price,save_to_database: bool = True):
     """处理期权数据并保存到CSV"""
     try:
         # 获取期权链数据
@@ -105,6 +105,9 @@ def process_options_data(stock_code, expiry_date, update_time, save_to_database:
         call_symbols = []
         put_symbols = []
         for item in options_chain:
+            if abs(item['strike_price'] - stock_price) > 100:
+                continue
+
             if item['call_symbol']:
                 call_symbols.append(item['call_symbol'])
             if item['put_symbol']:
@@ -112,7 +115,6 @@ def process_options_data(stock_code, expiry_date, update_time, save_to_database:
 
         call_option_data = get_option_data(stock_code, expiry_date, 'call', call_symbols, update_time)
         import time
-        time.sleep(60)
         put_option_data = get_option_data(stock_code, expiry_date, 'put', put_symbols, update_time)
         
         print(f"处理完成：{len(call_option_data)} 个看涨期权，{len(put_option_data)} 个看跌期权")

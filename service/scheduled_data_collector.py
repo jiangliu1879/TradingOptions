@@ -207,7 +207,7 @@ class ScheduledDataCollector:
             self.logger.info(f"🧮 开始计算 {stock_code} 的最大痛点...")
             
             # 获取期权数据
-            data_list = self.process_options_data_for_max_pain(stock_code, expiry_date, update_time)
+            data_list = self.process_options_data_for_max_pain(stock_code, expiry_date, update_time, stock_price)
             
             if not data_list:
                 self.logger.warning(f"⚠️ 没有期权数据可用于计算最大痛点")

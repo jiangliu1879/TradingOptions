@@ -63,6 +63,8 @@ class OptionsDataCollector:
     
     def collect_data(self):
         """收集期权数据并计算最大痛点"""
+
+        max_pain_result = None
         try:
             self.logger.info(f"开始收集 {self.stock_code} 期权数据...")
             
@@ -75,7 +77,7 @@ class OptionsDataCollector:
             stock_price = get_stock_realtime_price(self.stock_code)
             
             # 处理期权数据
-            result = process_options_data(self.stock_code, self.expiry_date, update_time, save_to_database=False)
+            result = process_options_data(self.stock_code, self.expiry_date, update_time, stock_price, save_to_database=False)
             
             if result:
                 self.logger.info(f"✅ 成功收集 {len(result)} 条期权数据")
@@ -92,15 +94,14 @@ class OptionsDataCollector:
                     self.logger.info(f"✅ 最大痛点计算和保存完成")
                 else:
                     self.logger.warning(f"⚠️ 最大痛点计算失败")
-                
             else:
                 self.logger.warning(f"⚠️ 数据收集返回空结果")
-                
         except Exception as e:
             self.logger.error(f"❌ 数据收集失败: {e}")
             import traceback
             self.logger.error(traceback.format_exc())
-
+        finally:
+            return max_pain_result
     
     def process_options_data_for_max_pain(self, stock_code: str, expiry_date: date, update_time: str, all_options_data: list):
         """
@@ -216,6 +217,31 @@ class OptionsDataCollector:
             import traceback
             self.logger.error(traceback.format_exc())
 
+def trade_options():
+    put_symbol = "NVDA260102P190000.US"
+
+    from decimal import Decimal
+    from longport.openapi import TradeContext, Config, OrderType, OrderSide, TimeInForceType
+
+    # Load configuration from environment variables
+    config = Config.from_env()
+
+    # Create a context for trade APIs
+    ctx = TradeContext(config)
+
+    resp = ctx.submit_order(
+        put_symbol,
+        OrderType.MO,
+        OrderSide.Sell,
+        Decimal(1),
+        TimeInForceType.Day
+    )
+
+
 if __name__ == "__main__":
-    collector = OptionsDataCollector("NVDA.US", date(2026, 1, 30))
-    collector.collect_data()
+    stock_code = "NVDA.US"
+    # list_expiry_date = [date(2026, 1, 2), date(2026, 1, 9), date(2026, 1, 16), date(2026, 1, 23), date(2026, 1, 30)]
+    list_expiry_date = [date(2026, 1, 30)]
+    for expiry_date in list_expiry_date:
+        collector = OptionsDataCollector(stock_code, expiry_date)
+        max_pain_result = collector.collect_data()

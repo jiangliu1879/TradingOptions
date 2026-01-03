@@ -186,8 +186,12 @@ if __name__ == "__main__":
     #     result = get_single_stock_data_to_db(stock_code, date(2025, 12, 31), date(2025, 12, 31))
     #     print(f"结果: {'成功' if result else '失败'}")
 
-    result = get_single_stock_data_to_db("TEM.US", date(2023, 1, 1), date(2025, 12, 31))
-    print(f"结果: {'成功' if result else '失败'}")
+    pair_years = [(2000, 2002), (2003, 2005), (2006, 2007), (2008, 2010), (2011, 2013), (2014, 2016), (2017, 2019), (2020, 2022), (2023, 2025)]
+    for start_year, end_year in pair_years:
+        result = get_single_stock_data_to_db("META.US", date(start_year, 1, 1), date(end_year, 12, 31))
+        print(f"结果: {'成功' if result else '失败'}")
+        import time
+        time.sleep(10)
     
     # 示例2: 获取所有股票数据到数据库
     # print("📊 示例2: 获取所有股票数据到数据库")
